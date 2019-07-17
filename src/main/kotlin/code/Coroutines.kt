@@ -10,7 +10,7 @@ object Coroutines {
         //println(code2())
 //        code3()
 //        code4()
-//        code5()
+        code5()
 //        code6()
 //        code7()
         //code8()
@@ -24,7 +24,7 @@ object Coroutines {
 //        code13()
         //超时
 //        code14()
-        code15()
+//        code15()
     }
     fun code15() = runBlocking {
         val result = withTimeoutOrNull(1300L) {
