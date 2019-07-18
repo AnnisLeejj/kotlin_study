@@ -4,7 +4,7 @@ import kotlinx.coroutines.*
 import kotlin.concurrent.thread
 
 object Coroutines {
-    @JvmStatic
+   @JvmStatic
     fun main(args: Array<String>) {
 //        code1()
         //println(code2())

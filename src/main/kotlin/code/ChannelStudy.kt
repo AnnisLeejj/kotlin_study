@@ -19,13 +19,100 @@ object ChannelStudy {
 //        扇出
 //        main5()
 //        扇入
-        main6()
+//       println( main6())
+        //带缓冲的通道
+//        main7()
+        //通道是公平的
+//        main8()
+        //计时器通道
+        main9()
     }
+
+    /**
+     * 计时器通道
+    计时器通道是一种特别的会合通道，每次经过特定的延迟都会从该通道进行消费并产生 Unit。
+    虽然它看起来似乎没用，它被用来构建分段来创建复杂的基于时间的 produce 管道和进行窗口化操作以及其它时间相关的处理。 可以在 select 中使用计时器通道来进行“打勾”操作。
+
+    使用工厂方法 ticker 来创建这些通道。 为了表明不需要其它元素，请使用 ReceiveChannel.cancel 方法。
+     */
+    fun main9() = runBlocking<Unit> {
+        val tickerChannel = ticker(initialDelayMillis = 0, delayMillis = 100) //创建计时器通道
+        var nextElement = withTimeoutOrNull(1) { tickerChannel.receive() }
+        println("Initial element is available immediately: $nextElement") // 初始尚未经过的延迟
+
+        nextElement = withTimeoutOrNull(50) { tickerChannel.receive() } // 所有随后到来的元素都经过了 100 毫秒的延迟
+        println("Next element is not ready in 50 ms: $nextElement")
+
+        nextElement = withTimeoutOrNull(60) { tickerChannel.receive() }
+        println("Next element is ready in 100 ms: $nextElement")
+
+        // 模拟大量消费延迟
+        println("Consumer pauses for 150ms")
+        delay(150)
+        // 下一个元素立即可用
+        nextElement = withTimeoutOrNull(1) { tickerChannel.receive() }
+        println("Next element is available immediately after large consumer delay: $nextElement")
+        // 请注意，`receive` 调用之间的暂停被考虑在内，下一个元素的到达速度更快
+        nextElement = withTimeoutOrNull(60) { tickerChannel.receive() }
+        println("Next element is ready in 50ms after consumer pause in 150ms: $nextElement")
+
+        tickerChannel.cancel() // 表明不再需要更多的元素
+    }
+
+    /**
+     * 发送和接收操作是 公平的 并且尊重调用它们的多个协程。
+     * 它们遵守先进先出原则，可以看到第一个协程调用 receive 并得到了元素。
+     * 在下面的例子中两个协程“乒”和“乓”都从共享的“桌子”通道接收到这个“球”元素。
+     */
+    fun main8() = runBlocking {
+        val table = Channel<Ball>() // 一个共享的 table（桌子）
+        launch { player("ping", table) }
+        launch { player("pong", table) }
+        table.send(Ball(0)) // 乒乓球
+        delay(1000) // 延迟 1 秒钟
+        coroutineContext.cancelChildren() // 游戏结束，取消它们
+    }
+
+    class Ball(hints: Int) {
+        var hits: Int = hints
+        override fun toString(): String {
+            return "Ball hits:$hits"
+        }
+    }
+
+    suspend fun player(name: String, table: Channel<Ball>) {
+        for (ball in table) { // 在循环中接收球
+            ball.hits++
+            println("$name $ball")
+            delay(100) // 等待一段时间
+            table.send(ball) // 将球发送回去
+        }
+    }
+
+    fun main7() = runBlocking<Unit> {
+        val channel = Channel<Int>(4) // 启动带缓冲的通道
+        val sender = launch {
+            // 启动发送者协程
+            repeat(10) {
+                println("Sending $it") // 在每一个元素发送前打印它们
+                channel.send(it) // 将在缓冲区被占满时挂起
+            }
+        }
+        // 没有接收到东西……只是等待……
+        delay(1000)
+        sender.cancel() // 取消发送者协程
+    }
+
+    /**
+     * 无缓冲的通道在发送者和接收者相遇时传输元素（aka rendezvous（这句话应该是个俚语，意思好像是“又是约会”的意思，不知道怎么翻））。
+     * 如果发送先被调用，则它将被挂起直到接收被调用， 如果接收先被调用，它将被挂起直到发送被调用。
+     */
     fun main6() = runBlocking {
         val channel = Channel<String>()
         launch { sendString(channel, "foo", 200L) }
         launch { sendString(channel, "BAR!", 500L) }
-        repeat(6) { // 接收前六个
+        repeat(6) {
+            // 接收前六个
             println(channel.receive())
         }
         coroutineContext.cancelChildren() // 取消所有子协程来让主协程结束
