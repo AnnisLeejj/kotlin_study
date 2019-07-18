@@ -5,7 +5,7 @@ import javax.rmi.CORBA.Util
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
-object 携程上下文_调度器 {
+object 协程上下文_调度器 {
     @JvmStatic
     fun main(args: Array<String>) {
 //        main1()
